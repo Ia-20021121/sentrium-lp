@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentrium — ネットワーク可観測性プラットフォーム</title>
+<meta name="description" content="Sentriumは、モダンインフラのネットワークを一枚の地図に。分散環境の可視化・異常検知・ゼロトラスト連携を、エージェントレスで。資料請求はこちら。">
+
+<!-- 外部参照はGoogle Fontsのlinkのみ。preconnect + display=swap -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===================== Design Tokens（design-tokens.md 正本） ===================== */
+:root{
+  --bg:#FBFBFD; --surface:#FFFFFF; --surface-2:#F4F6FA;
+  --ink:#0E1726; --ink-2:#3A4658; --muted:#5C6779; --line:#E6E9F0;
+  --accent:#2F6BFF; --accent-ink:#1B4FD6; --accent-soft:#EAF0FF;
+  --dark:#0B1220; --dark-ink:#C7D0E0; --ok:#1FA971;
+
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px; --s-6:32px;
+  --s-7:48px; --s-8:64px; --s-9:96px; --s-10:128px;
+  --r-1:10px; --r-2:14px; --r-3:22px; --r-full:999px;
+  --shadow-1:0 1px 2px rgba(14,23,38,.06);
+  --shadow-2:0 18px 40px -18px rgba(14,23,38,.22);
+
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+  --display:'Space Grotesk',var(--sans);
+  --maxw:1160px;
+  --dur:.2s; --fade-dur:.52s; --ease:cubic-bezier(.2,.7,.2,1);
+}
+
+/* ===================== Reset / Base ===================== */
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;overflow-x:clip}
+body{
+  font-family:var(--sans);background:var(--bg);color:var(--ink);
+  line-height:1.7;-webkit-font-smoothing:antialiased;overflow-x:clip;
+  font-feature-settings:"cv05" 1;
+}
+img,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
+ul{list-style:none}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+h1,h2,h3{font-family:var(--display);font-weight:600;color:var(--ink)}
+h1{font-size:clamp(2.4rem,1.4rem + 4.2vw,4.25rem);line-height:1.05;letter-spacing:-.02em;font-weight:600}
+h2{font-size:clamp(1.7rem,1.2rem + 2.2vw,2.6rem);line-height:1.12;letter-spacing:-.015em}
+h3{font-size:clamp(1.12rem,1rem + 0.5vw,1.3rem);line-height:1.25;letter-spacing:-.01em}
+p{color:var(--ink-2)}
+
+/* ===================== Layout helpers ===================== */
+.container{width:100%;max-width:var(--maxw);margin-inline:auto;padding-inline:var(--s-5)}
+.section{padding-block:var(--s-10)}
+.eyebrow{
+  font-size:.8rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);display:inline-flex;align-items:center;gap:var(--s-2);
+}
+.eyebrow::before{content:"";width:18px;height:1px;background:var(--accent);display:inline-block}
+.lead{font-size:clamp(1.05rem,1rem + 0.4vw,1.25rem);line-height:1.6;color:var(--muted)}
+.section-head{max-width:620px;margin-bottom:var(--s-8)}
+.section-head.center{margin-inline:auto;text-align:center}
+.section-head .eyebrow{margin-bottom:var(--s-4)}
+.section-head h2{margin-bottom:var(--s-4)}
+
+.skip-link{
+  position:absolute;left:var(--s-4);top:-60px;z-index:200;background:var(--ink);color:#fff;
+  padding:var(--s-3) var(--s-5);border-radius:var(--r-1);transition:top var(--dur) var(--ease);
+}
+.skip-link:focus{top:var(--s-4)}
+
+/* ===================== Buttons ===================== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--s-2);
+  padding:var(--s-3) var(--s-5);border-radius:var(--r-full);font-weight:600;font-size:.96rem;
+  border:1px solid transparent;transition:background var(--dur) var(--ease),color var(--dur) var(--ease),
+  border-color var(--dur) var(--ease),transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
+  will-change:transform;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-ink)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn-ghost:hover{border-color:var(--ink);background:var(--surface)}
+.btn-lg{padding:var(--s-4) var(--s-7);font-size:1rem}
+.arrow{transition:transform var(--dur) var(--ease)}
+.btn:hover .arrow{transform:translateX(3px)}
+
+/* ===================== Header / Nav ===================== */
+.header{
+  position:sticky;top:0;z-index:100;background:rgba(251,251,253,.82);
+  backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid transparent;
+  transition:border-color var(--dur) var(--ease);
+}
+.header.scrolled{border-bottom-color:var(--line)}
+.header-inner{display:flex;align-items:center;justify-content:space-between;height:72px}
+.brand{font-family:var(--display);font-weight:700;font-size:1.3rem;letter-spacing:-.02em;display:flex;align-items:center;gap:var(--s-2)}
+.brand .mark{width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#7AA0FF);box-shadow:var(--shadow-1)}
+.nav{display:flex;align-items:center;gap:var(--s-6)}
+.nav-links{display:flex;align-items:center;gap:var(--s-6)}
+.nav-links a{font-size:.95rem;color:var(--ink-2);position:relative;padding-block:var(--s-1)}
+.nav-links a::after{content:"";position:absolute;left:0;bottom:-2px;height:1.5px;width:0;background:var(--accent);transition:width var(--dur) var(--ease)}
+.nav-links a:hover{color:var(--ink)}
+.nav-links a:hover::after{width:100%}
+.nav-cta{display:flex;align-items:center;gap:var(--s-3)}
+.nav-toggle{display:none;width:44px;height:44px;border-radius:var(--r-1);border:1px solid var(--line);align-items:center;justify-content:center}
+.nav-toggle .bars{position:relative;width:18px;height:12px}
+.nav-toggle .bars span{position:absolute;left:0;width:100%;height:1.6px;background:var(--ink);transition:transform var(--dur) var(--ease),opacity var(--dur) var(--ease)}
+.nav-toggle .bars span:nth-child(1){top:0}
+.nav-toggle .bars span:nth-child(2){top:5px}
+.nav-toggle .bars span:nth-child(3){top:10px}
+.nav-toggle[aria-expanded="true"] .bars span:nth-child(1){transform:translateY(5px) rotate(45deg)}
+.nav-toggle[aria-expanded="true"] .bars span:nth-child(2){opacity:0}
+.nav-toggle[aria-expanded="true"] .bars span:nth-child(3){transform:translateY(-5px) rotate(-45deg)}
+
+/* ===================== Hero ===================== */
+.hero{position:relative;padding-block:var(--s-10) var(--s-9);overflow:clip}
+.hero::before{ /* 余白に置く控えめなグリッド光 */
+  content:"";position:absolute;inset:0;z-index:-1;
+  background:
+    radial-gradient(620px 360px at 78% 8%,rgba(47,107,255,.10),transparent 70%),
+    radial-gradient(500px 320px at 5% 0%,rgba(47,107,255,.05),transparent 70%);
+}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:var(--s-9);align-items:center}
+.hero h1{margin:var(--s-5) 0 var(--s-5)}
+.hero .lead{max-width:42ch;margin-bottom:var(--s-7)}
+.hero-actions{display:flex;flex-wrap:wrap;gap:var(--s-3);margin-bottom:var(--s-6)}
+.hero-note{display:flex;align-items:center;gap:var(--s-3);color:var(--muted);font-size:.9rem}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px rgba(31,169,113,.16);flex:none}
+
+/* Hero visual: 抽象的なネットワーク監視パネル（CSSのみ・装飾） */
+.hero-visual{position:relative}
+.panel{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-3);
+  box-shadow:var(--shadow-2);padding:var(--s-5);
+}
+.panel-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s-5)}
+.panel-top .dots{display:flex;gap:6px}
+.panel-top .dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.panel-tag{font-size:.72rem;font-weight:600;letter-spacing:.1em;color:var(--ok);background:rgba(31,169,113,.10);padding:4px 10px;border-radius:var(--r-full)}
+.spark{display:grid;grid-template-columns:repeat(24,1fr);align-items:end;gap:3px;height:120px;margin-bottom:var(--s-5)}
+.spark i{background:linear-gradient(180deg,var(--accent),#9CB8FF);border-radius:3px;opacity:.92}
+.metrics-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-3)}
+.metric-chip{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-1);padding:var(--s-4)}
+.metric-chip b{font-family:var(--display);font-size:1.35rem;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.metric-chip span{display:block;font-size:.76rem;color:var(--muted);margin-top:2px}
+.float-card{
+  position:absolute;left:-22px;bottom:-26px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-2);box-shadow:var(--shadow-2);padding:var(--s-4) var(--s-5);display:flex;gap:var(--s-3);align-items:center;max-width:260px;
+}
+.float-card .ic{width:38px;height:38px;border-radius:10px;background:var(--accent-soft);display:grid;place-items:center;flex:none}
+.float-card .ic::after{content:"";width:14px;height:14px;border:2.5px solid var(--accent);border-radius:50%;border-top-color:transparent;display:block}
+.float-card small{color:var(--muted);font-size:.78rem;display:block}
+.float-card strong{font-size:.95rem}
+
+/* ===================== Trust bar ===================== */
+.trust{padding-block:var(--s-8);border-block:1px solid var(--line);background:var(--surface)}
+.trust p{text-align:center;color:var(--muted);font-size:.85rem;letter-spacing:.04em;margin-bottom:var(--s-5)}
+.logos{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:var(--s-7)}
+.logos span{font-family:var(--display);font-weight:600;font-size:1.15rem;color:var(--ink-2);opacity:.6;letter-spacing:-.01em}
+
+/* ===================== Features ===================== */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-5)}
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-2);padding:var(--s-6);
+  transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease),border-color var(--dur) var(--ease);
+}
+.card:hover{transform:translateY(-4px);box-shadow:var(--shadow-2);border-color:#D7DDEA}
+.card .ic{width:46px;height:46px;border-radius:12px;background:var(--accent-soft);display:grid;place-items:center;margin-bottom:var(--s-5)}
+.card .ic span{width:18px;height:18px;border-radius:5px;border:2.5px solid var(--accent)}
+.card.v2 .ic span{border-radius:50%}
+.card.v3 .ic span{transform:rotate(45deg);border-radius:3px}
+.card h3{margin-bottom:var(--s-3)}
+.card p{font-size:.96rem}
+
+/* ===================== How it works ===================== */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-5);counter-reset:step}
+.step{padding:var(--s-6);border-radius:var(--r-2);background:var(--surface-2);border:1px solid var(--line)}
+.step .num{
+  font-family:var(--display);font-weight:700;font-size:.95rem;color:var(--accent);
+  width:36px;height:36px;border-radius:var(--r-full);background:var(--accent-soft);
+  display:grid;place-items:center;margin-bottom:var(--s-5)
+}
+.step h3{margin-bottom:var(--s-3)}
+.step p{font-size:.95rem}
+
+/* ===================== Metrics ===================== */
+.metrics{background:var(--dark);color:#fff}
+.metrics h2{color:#fff}
+.metrics .lead{color:var(--dark-ink)}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s-5);margin-top:var(--s-8)}
+.stat{border-left:2px solid rgba(255,255,255,.14);padding-left:var(--s-5)}
+.stat b{font-family:var(--display);font-weight:600;font-size:clamp(2.2rem,1.6rem + 2vw,3.1rem);letter-spacing:-.02em;font-variant-numeric:tabular-nums;display:block;color:#fff}
+.stat span{color:var(--dark-ink);font-size:.92rem}
+
+/* ===================== Tabs (use cases) ===================== */
+.tabs{margin-top:var(--s-7)}
+.tablist{display:inline-flex;flex-wrap:wrap;gap:var(--s-2);background:var(--surface-2);border:1px solid var(--line);padding:6px;border-radius:var(--r-full);margin-bottom:var(--s-6)}
+.tab{padding:var(--s-3) var(--s-5);border-radius:var(--r-full);font-weight:500;font-size:.94rem;color:var(--muted);transition:background var(--dur) var(--ease),color var(--dur) var(--ease)}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1)}
+.tabpanel{display:grid;grid-template-columns:1.1fr .9fr;gap:var(--s-7);align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-3);padding:var(--s-8)}
+.tabpanel[hidden]{display:none}
+.tabpanel h3{margin-bottom:var(--s-4)}
+.tabpanel ul{display:grid;gap:var(--s-3);margin-top:var(--s-5)}
+.tabpanel li{position:relative;padding-left:var(--s-6);color:var(--ink-2);font-size:.96rem}
+.tabpanel li::before{content:"";position:absolute;left:0;top:.55em;width:14px;height:9px;border-left:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(-45deg)}
+.tabpanel .panel-art{aspect-ratio:4/3;border-radius:var(--r-2);background:
+  linear-gradient(180deg,#fff,var(--surface-2)),
+  repeating-linear-gradient(90deg,rgba(47,107,255,.08) 0 1px,transparent 1px 28px);
+  border:1px solid var(--line);position:relative;overflow:hidden}
+.panel-art .line{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);top:50%}
+.panel-art .node{position:absolute;width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 5px rgba(47,107,255,.14)}
+
+/* ===================== FAQ (accordion) ===================== */
+.faq{max-width:820px;margin-inline:auto}
+.acc{border:1px solid var(--line);border-radius:var(--r-2);background:var(--surface);margin-bottom:var(--s-3);overflow:clip}
+.acc-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:var(--s-4);text-align:left;padding:var(--s-5) var(--s-6);font-weight:600;font-size:1.02rem}
+.acc-trigger .pm{position:relative;width:16px;height:16px;flex:none}
+.acc-trigger .pm::before,.acc-trigger .pm::after{content:"";position:absolute;background:var(--accent);transition:transform var(--dur) var(--ease)}
+.acc-trigger .pm::before{top:7px;left:0;width:16px;height:2px}
+.acc-trigger .pm::after{left:7px;top:0;width:2px;height:16px}
+.acc-trigger[aria-expanded="true"] .pm::after{transform:scaleY(0)}
+.acc-panel{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s var(--ease)}
+.acc-panel.open{grid-template-rows:1fr}
+.acc-panel .inner{overflow:hidden}
+.acc-panel p{padding:0 var(--s-6) var(--s-5);color:var(--muted);font-size:.96rem}
+
+/* ===================== CTA band ===================== */
+.cta-band{background:var(--dark);color:#fff;border-radius:var(--r-3);padding:var(--s-9);text-align:center}
+.cta-band h2{color:#fff;margin-bottom:var(--s-4)}
+.cta-band p{color:var(--dark-ink);max-width:52ch;margin:0 auto var(--s-7)}
+.cta-band .hero-actions{justify-content:center}
+.cta-band .btn-ghost{color:#fff;border-color:rgba(255,255,255,.28)}
+.cta-band .btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.06)}
+
+/* ===================== Contact ===================== */
+.contact-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:var(--s-9);align-items:start}
+.form{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-3);padding:var(--s-7);box-shadow:var(--shadow-1)}
+.field{display:grid;gap:var(--s-2);margin-bottom:var(--s-5)}
+.field label{font-size:.88rem;font-weight:500;color:var(--ink-2)}
+.field .req{color:var(--accent);margin-left:2px}
+.field input,.field textarea,.field select{
+  font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:var(--r-1);
+  padding:var(--s-3) var(--s-4);transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
+}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,107,255,.14)}
+.form .row{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-5)}
+.form .note{font-size:.82rem;color:var(--muted);margin-top:var(--s-3)}
+.contact-list{display:grid;gap:var(--s-5);margin-top:var(--s-6)}
+.contact-list li{display:flex;gap:var(--s-4);align-items:flex-start}
+.contact-list .ic{width:40px;height:40px;border-radius:10px;background:var(--accent-soft);flex:none;display:grid;place-items:center}
+.contact-list .ic span{width:14px;height:14px;border:2.5px solid var(--accent);border-radius:4px}
+.contact-list small{color:var(--muted);display:block;font-size:.82rem}
+.contact-list strong{font-size:1rem}
+
+/* ===================== Footer ===================== */
+.footer{background:var(--surface);border-top:1px solid var(--line);padding-block:var(--s-8) var(--s-7)}
+.footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:var(--s-7)}
+.footer .brand{margin-bottom:var(--s-4)}
+.footer p{font-size:.9rem;color:var(--muted);max-width:34ch}
+.footer h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:var(--s-4);font-weight:600}
+.footer-col a{display:block;color:var(--ink-2);font-size:.93rem;padding-block:var(--s-2)}
+.footer-col a:hover{color:var(--accent)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--s-3);margin-top:var(--s-8);padding-top:var(--s-5);border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+
+/* ===================== Fade-in motion ===================== */
+[data-fade]{opacity:0;transform:translateY(16px);transition:opacity var(--fade-dur) var(--ease),transform var(--fade-dur) var(--ease)}
+[data-fade].in{opacity:1;transform:none}
+
+/* ===================== Responsive ===================== */
+@media (max-width:960px){
+  .hero-grid{grid-template-columns:1fr;gap:var(--s-8)}
+  .hero-visual{order:-1;max-width:520px}
+  .cards,.steps{grid-template-columns:1fr 1fr}
+  .metrics-grid{grid-template-columns:1fr 1fr}
+  .tabpanel{grid-template-columns:1fr;padding:var(--s-6)}
+  .contact-grid{grid-template-columns:1fr;gap:var(--s-7)}
+  .footer-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:680px){
+  :root{--s-10:80px;--s-9:64px}
+  .nav-links,.nav-cta .btn{display:none}
+  .nav-toggle{display:inline-flex}
+  /* モバイルメニュー展開時 */
+  .nav.open .nav-links{
+    display:flex;flex-direction:column;align-items:flex-start;gap:var(--s-5);
+    position:fixed;inset:72px 0 auto 0;background:var(--surface);border-bottom:1px solid var(--line);
+    padding:var(--s-6) var(--s-5);box-shadow:var(--shadow-2);
+  }
+  .nav.open .nav-cta .btn{display:inline-flex}
+  .nav.open .nav-cta{position:fixed;inset:auto 0 auto 0;top:248px;padding:0 var(--s-5);background:var(--surface)}
+  .cards,.steps,.metrics-grid,.form .row,.footer-grid{grid-template-columns:1fr}
+  .float-card{display:none}
+  .cta-band{padding:var(--s-8) var(--s-5)}
+}
+
+/* ===================== Reduced motion ===================== */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important;scroll-behavior:auto!important}
+  [data-fade]{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<!-- ============ Header ============ -->
+<header class="header" id="header">
+  <div class="container header-inner">
+    <a class="brand" href="#" aria-label="Sentrium ホーム"><span class="mark" aria-hidden="true"></span>Sentrium</a>
+    <div class="nav" id="nav">
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#features">特長</a></li>
+        <li><a href="#how">仕組み</a></li>
+        <li><a href="#usecases">活用例</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="#contact">問い合わせ</a>
+        <a class="btn btn-primary" href="#contact">資料請求<span class="arrow" aria-hidden="true">&rarr;</span></a>
+      </div>
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="メニューを開く" aria-expanded="false" aria-controls="navLinks">
+      <span class="bars" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============ Hero ============ -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow" data-fade>Network Observability</span>
+        <h1 data-fade>分散したネットワークを、<br>一枚の地図に。</h1>
+        <p class="lead" data-fade>Sentriumは、マルチクラウドとオンプレに広がる通信経路を自動で可視化し、異常を予兆段階で検知します。エージェントレスで、最短15分。</p>
+        <div class="hero-actions" data-fade>
+          <a class="btn btn-primary btn-lg" href="#contact">資料請求する<span class="arrow" aria-hidden="true">&rarr;</span></a>
+          <a class="btn btn-ghost btn-lg" href="#how">仕組みを見る</a>
+        </div>
+        <p class="hero-note" data-fade><span class="status-dot" aria-hidden="true"></span>稼働率 99.98% / SOC 2 Type II 準拠 / 国内データレジデンシー対応</p>
+      </div>
+      <div class="hero-visual" data-fade aria-hidden="true">
+        <div class="panel">
+          <div class="panel-top">
+            <span class="dots"><i></i><i></i><i></i></span>
+            <span class="panel-tag">LIVE / 正常</span>
+          </div>
+          <div class="spark" id="spark"></div>
+          <div class="metrics-row">
+            <div class="metric-chip"><b>42ms</b><span>平均レイテンシ</span></div>
+            <div class="metric-chip"><b>0</b><span>未解決の異常</span></div>
+            <div class="metric-chip"><b>1.2k</b><span>監視ノード</span></div>
+          </div>
+        </div>
+        <div class="float-card">
+          <span class="ic" aria-hidden="true"></span>
+          <span><small>異常検知</small><strong>東京リージョンの遅延を予兆検知</strong></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Trust bar ============ -->
+  <section class="trust">
+    <div class="container">
+      <p data-fade>業種を問わず、ミッションクリティカルな現場で採用されています</p>
+      <div class="logos" data-fade>
+        <span>NORDIC&nbsp;CLOUD</span><span>Meridian</span><span>kabuto&nbsp;sys</span><span>HELIOS</span><span>Aoba&nbsp;Tech</span><span>QUANTA</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Features ============ -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-head" data-fade>
+        <span class="eyebrow">特長</span>
+        <h2>見えないものを、見えるように。</h2>
+        <p class="lead">経路・依存関係・遅延を、構築不要で把握。運用チームが「次の一手」に集中できる状態をつくります。</p>
+      </div>
+      <div class="cards">
+        <article class="card v1" data-fade>
+          <div class="ic" aria-hidden="true"><span></span></div>
+          <h3>経路の自動マッピング</h3>
+          <p>クラウド・オンプレをまたぐ通信を自動で地図化。依存関係とボトルネックが一目で分かります。</p>
+        </article>
+        <article class="card v2" data-fade>
+          <div class="ic" aria-hidden="true"><span></span></div>
+          <h3>予兆段階の異常検知</h3>
+          <p>ベースラインからの逸脱を機械学習で評価。障害になる前に、影響範囲つきで通知します。</p>
+        </article>
+        <article class="card v3" data-fade>
+          <div class="ic" aria-hidden="true"><span></span></div>
+          <h3>ゼロトラスト連携</h3>
+          <p>IDプロバイダやSASEと連携し、誰が・どこへ・何を、を可視化。最小権限の運用を支えます。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ How it works ============ -->
+  <section class="section" id="how" style="background:var(--surface);border-block:1px solid var(--line)">
+    <div class="container">
+      <div class="section-head" data-fade>
+        <span class="eyebrow">仕組み</span>
+        <h2>導入は3ステップ。最短15分。</h2>
+        <p class="lead">エージェントの配布は不要。読み取り専用の連携から始められます。</p>
+      </div>
+      <div class="steps">
+        <div class="step" data-fade><div class="num" aria-hidden="true">1</div><h3>接続する</h3><p>クラウドアカウントとネットワーク機器に、読み取り専用ロールで安全に接続します。</p></div>
+        <div class="step" data-fade><div class="num" aria-hidden="true">2</div><h3>可視化される</h3><p>経路と依存関係を自動収集。数分でライブな地図とベースラインが描かれます。</p></div>
+        <div class="step" data-fade><div class="num" aria-hidden="true">3</div><h3>気づける</h3><p>逸脱を検知して通知。Slack/Teams/PagerDutyへ影響範囲つきで連携します。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Metrics ============ -->
+  <section class="section metrics">
+    <div class="container">
+      <div class="section-head" data-fade>
+        <span class="eyebrow">数字で見る</span>
+        <h2>運用の手応えを、数字で。</h2>
+        <p class="lead">導入企業における平均的な改善値（自社調べ・架空のデモ値）。</p>
+      </div>
+      <div class="metrics-grid">
+        <div class="stat" data-fade><b data-count="68" data-suffix="%">0</b><span>障害検知までの時間を短縮</span></div>
+        <div class="stat" data-fade><b data-count="1200" data-suffix="+">0</b><span>監視対象ノード／社</span></div>
+        <div class="stat" data-fade><b data-count="15" data-suffix="分">0</b><span>初期可視化までの時間</span></div>
+        <div class="stat" data-fade><b data-count="99.98" data-suffix="%">0</b><span>プラットフォーム稼働率</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Use cases (Tabs) ============ -->
+  <section class="section" id="usecases">
+    <div class="container">
+      <div class="section-head" data-fade>
+        <span class="eyebrow">活用例</span>
+        <h2>チームの課題に、的確に。</h2>
+      </div>
+      <div class="tabs" data-fade>
+        <div class="tablist" role="tablist" aria-label="活用例の切り替え">
+          <button class="tab" role="tab" id="tab-1" aria-controls="panel-1" aria-selected="true">SRE / 運用</button>
+          <button class="tab" role="tab" id="tab-2" aria-controls="panel-2" aria-selected="false" tabindex="-1">セキュリティ</button>
+          <button class="tab" role="tab" id="tab-3" aria-controls="panel-3" aria-selected="false" tabindex="-1">プラットフォーム</button>
+        </div>
+
+        <div class="tabpanel" role="tabpanel" id="panel-1" aria-labelledby="tab-1" tabindex="0">
+          <div>
+            <h3>障害対応のリードタイムを短縮</h3>
+            <p>影響範囲が即座に分かるため、切り分けの往復が減ります。</p>
+            <ul>
+              <li>経路ベースの根本原因の特定</li>
+              <li>変更前後の差分を自動比較</li>
+              <li>オンコールへ影響範囲つきで通知</li>
+            </ul>
+          </div>
+          <div class="panel-art" aria-hidden="true"><span class="line"></span><span class="node" style="left:14%;top:46%"></span><span class="node" style="left:52%;top:50%"></span><span class="node" style="left:82%;top:44%"></span></div>
+        </div>
+
+        <div class="tabpanel" role="tabpanel" id="panel-2" aria-labelledby="tab-2" tabindex="0" hidden>
+          <div>
+            <h3>不審な通信を早期に把握</h3>
+            <p>通常から外れた東西通信や新規経路を検知し、調査を支援します。</p>
+            <ul>
+              <li>ラテラルムーブメントの兆候を可視化</li>
+              <li>許可外の宛先へのアクセスを警告</li>
+              <li>監査用に経路の履歴を保持</li>
+            </ul>
+          </div>
+          <div class="panel-art" aria-hidden="true"><span class="line"></span><span class="node" style="left:22%;top:40%"></span><span class="node" style="left:60%;top:58%"></span><span class="node" style="left:88%;top:48%"></span></div>
+        </div>
+
+        <div class="tabpanel" role="tabpanel" id="panel-3" aria-labelledby="tab-3" tabindex="0" hidden>
+          <div>
+            <h3>マルチクラウドを一元管理</h3>
+            <p>アカウントやリージョンをまたいだ全体像を、一枚のビューで。</p>
+            <ul>
+              <li>クラウド横断の統一ダッシュボード</li>
+              <li>コストに効く通信の可視化</li>
+              <li>IaCの変更とトポロジを関連付け</li>
+            </ul>
+          </div>
+          <div class="panel-art" aria-hidden="true"><span class="line"></span><span class="node" style="left:18%;top:52%"></span><span class="node" style="left:48%;top:42%"></span><span class="node" style="left:78%;top:56%"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ (Accordion) ============ -->
+  <section class="section" id="faq" style="background:var(--surface);border-block:1px solid var(--line)">
+    <div class="container">
+      <div class="section-head center" data-fade>
+        <span class="eyebrow">FAQ</span>
+        <h2>よくあるご質問</h2>
+      </div>
+      <div class="faq" data-fade>
+        <div class="acc">
+          <h3 style="font:inherit">
+            <button class="acc-trigger" aria-expanded="false" aria-controls="acc-1" id="acc-btn-1">エージェントの導入は必要ですか？<span class="pm" aria-hidden="true"></span></button>
+          </h3>
+          <div class="acc-panel" id="acc-1" role="region" aria-labelledby="acc-btn-1"><div class="inner"><p>不要です。読み取り専用のAPI連携から開始でき、サーバーへのエージェント配布なしで可視化を始められます。</p></div></div>
+        </div>
+        <div class="acc">
+          <h3 style="font:inherit">
+            <button class="acc-trigger" aria-expanded="false" aria-controls="acc-2" id="acc-btn-2">データはどこに保存されますか？<span class="pm" aria-hidden="true"></span></button>
+          </h3>
+          <div class="acc-panel" id="acc-2" role="region" aria-labelledby="acc-btn-2"><div class="inner"><p>国内リージョンでのデータレジデンシーに対応しています。保持期間やマスキングのポリシーは組織単位で設定できます。</p></div></div>
+        </div>
+        <div class="acc">
+          <h3 style="font:inherit">
+            <button class="acc-trigger" aria-expanded="false" aria-controls="acc-3" id="acc-btn-3">既存の監視ツールと併用できますか？<span class="pm" aria-hidden="true"></span></button>
+          </h3>
+          <div class="acc-panel" id="acc-3" role="region" aria-labelledby="acc-btn-3"><div class="inner"><p>可能です。SlackやPagerDuty、主要なSIEM/SASEと連携でき、既存のワークフローに組み込めます。</p></div></div>
+        </div>
+        <div class="acc">
+          <h3 style="font:inherit">
+            <button class="acc-trigger" aria-expanded="false" aria-controls="acc-4" id="acc-btn-4">トライアルはありますか？<span class="pm" aria-hidden="true"></span></button>
+          </h3>
+          <div class="acc-panel" id="acc-4" role="region" aria-labelledby="acc-btn-4"><div class="inner"><p>14日間の無料トライアルをご用意しています。資料請求またはお問い合わせよりお申し込みください。</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA band ============ -->
+  <section class="section">
+    <div class="container">
+      <div class="cta-band" data-fade>
+        <h2>まずは、自社の地図を見てみませんか。</h2>
+        <p>15分のオンライン デモで、貴社環境に近い構成での可視化イメージをご覧いただけます。</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg" href="#contact">資料請求する<span class="arrow" aria-hidden="true">&rarr;</span></a>
+          <a class="btn btn-ghost btn-lg" href="#contact">デモを依頼する</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Contact ============ -->
+  <section class="section" id="contact">
+    <div class="container contact-grid">
+      <div data-fade>
+        <span class="eyebrow">お問い合わせ</span>
+        <h2 style="margin:var(--s-4) 0 var(--s-4)">話を聞いてみる。</h2>
+        <p class="lead">資料請求・デモのご依頼はこちらから。担当より1営業日以内にご連絡します。</p>
+        <ul class="contact-list">
+          <li><span class="ic" aria-hidden="true"><span></span></span><span><small>メール</small><strong>sales@sentrium.example</strong></span></li>
+          <li><span class="ic" aria-hidden="true"><span></span></span><span><small>受付時間</small><strong>平日 9:00–18:00（JST）</strong></span></li>
+        </ul>
+      </div>
+      <form class="form" data-fade novalidate aria-label="資料請求・お問い合わせフォーム">
+        <div class="row">
+          <div class="field">
+            <label for="f-name">お名前<span class="req" aria-hidden="true">*</span></label>
+            <input id="f-name" name="name" type="text" autocomplete="name" required placeholder="山田 太郎">
+          </div>
+          <div class="field">
+            <label for="f-company">会社名<span class="req" aria-hidden="true">*</span></label>
+            <input id="f-company" name="company" type="text" autocomplete="organization" required placeholder="株式会社サンプル">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-email">メールアドレス<span class="req" aria-hidden="true">*</span></label>
+          <input id="f-email" name="email" type="email" autocomplete="email" required placeholder="taro@example.com">
+        </div>
+        <div class="field">
+          <label for="f-topic">ご相談内容</label>
+          <select id="f-topic" name="topic">
+            <option>資料請求</option>
+            <option>オンラインデモ</option>
+            <option>料金について</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-msg">メッセージ</label>
+          <textarea id="f-msg" name="message" rows="4" placeholder="ご利用環境やお困りごとをご記入ください"></textarea>
+        </div>
+        <button class="btn btn-primary btn-lg" type="submit" style="width:100%">送信する<span class="arrow" aria-hidden="true">&rarr;</span></button>
+        <p class="note" id="formNote" role="status">※ これは検証用のデモフォームです。送信は行われません。</p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<!-- ============ Footer ============ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="brand" style="font-size:1.2rem"><span class="mark" aria-hidden="true"></span>Sentrium</div>
+        <p>分散したネットワークを一枚の地図に。モダンインフラのための可観測性プラットフォーム。</p>
+      </div>
+      <nav class="footer-col" aria-label="製品">
+        <h4>製品</h4>
+        <a href="#features">特長</a><a href="#how">仕組み</a><a href="#usecases">活用例</a>
+      </nav>
+      <nav class="footer-col" aria-label="リソース">
+        <h4>リソース</h4>
+        <a href="#faq">FAQ</a><a href="#contact">資料請求</a><a href="#contact">お問い合わせ</a>
+      </nav>
+      <nav class="footer-col" aria-label="会社">
+        <h4>会社</h4>
+        <a href="#">会社概要</a><a href="#">セキュリティ</a><a href="#">採用</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2025 Sentrium Inc.（架空のデモサイト）</span>
+      <span>Privacy / Terms / Status</span>
+    </div>
+  </div>
+</footer>
+
+<noscript>
+  <div style="background:var(--accent-soft);color:var(--ink);text-align:center;padding:12px 16px;font-size:.9rem">
+    JavaScriptが無効のため一部の動き（タブ・アコーディオンの開閉アニメ等）は簡易表示になります。内容はすべてご覧いただけます。
+  </div>
+  <style>
+    [data-fade]{opacity:1!important;transform:none!important}
+    .acc-panel{grid-template-rows:1fr!important}
+    .tabpanel[hidden]{display:grid!important}
+    .tablist{display:none}
+  </style>
+</noscript>
+
+<script>
+(function(){
+  'use strict';
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Header: scrolled border ---------- */
+  var header = document.getElementById('header');
+  function onScroll(){ header.classList.toggle('scrolled', window.scrollY > 8); }
+  window.addEventListener('scroll', onScroll, {passive:true}); onScroll();
+
+  /* ---------- Mobile nav: aria + focus trap + Esc ---------- */
+  var nav = document.getElementById('nav');
+  var toggle = document.getElementById('navToggle');
+  var lastFocus = null;
+  function navItems(){ return nav.querySelectorAll('a, button'); }
+  function openNav(){
+    nav.classList.add('open'); toggle.setAttribute('aria-expanded','true');
+    toggle.setAttribute('aria-label','メニューを閉じる'); lastFocus = document.activeElement;
+    var items = navItems(); if(items.length) items[0].focus();
+    document.addEventListener('keydown', onKey);
+  }
+  function closeNav(){
+    nav.classList.remove('open'); toggle.setAttribute('aria-expanded','false');
+    toggle.setAttribute('aria-label','メニューを開く');
+    document.removeEventListener('keydown', onKey);
+    if(toggle) toggle.focus();
+  }
+  function onKey(e){
+    if(e.key === 'Escape'){ closeNav(); return; }
+    if(e.key === 'Tab'){
+      var items = Array.prototype.slice.call(navItems()).filter(function(el){return el.offsetParent !== null;});
+      if(!items.length) return;
+      var first = items[0], last = items[items.length-1];
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+  }
+  toggle.addEventListener('click', function(){
+    (toggle.getAttribute('aria-expanded') === 'true') ? closeNav() : openNav();
+  });
+  nav.querySelectorAll('.nav-links a, .nav-cta a').forEach(function(a){
+    a.addEventListener('click', function(){ if(nav.classList.contains('open')) closeNav(); });
+  });
+
+  /* ---------- Fade-in (once) via IntersectionObserver ---------- */
+  var fades = document.querySelectorAll('[data-fade]');
+  if('IntersectionObserver' in window && !reduce){
+    var io = new IntersectionObserver(function(entries, obs){
+      entries.forEach(function(en){
+        if(!en.isIntersecting) return;
+        var el = en.target;
+        var sibs = el.parentElement ? el.parentElement.querySelectorAll(':scope > [data-fade]') : [el];
+        var idx = Array.prototype.indexOf.call(sibs, el);
+        el.style.transitionDelay = Math.min(idx,5)*60 + 'ms';
+        el.classList.add('in'); obs.unobserve(el);
+      });
+    }, {threshold:0.16, rootMargin:'0px 0px -8% 0px'});
+    fades.forEach(function(el){ io.observe(el); });
+  } else {
+    fades.forEach(function(el){ el.classList.add('in'); });
+  }
+
+  /* ---------- Count up ---------- */
+  function countUp(el){
+    var target = parseFloat(el.getAttribute('data-count')) || 0;
+    var suffix = el.getAttribute('data-suffix') || '';
+    var decimals = (String(target).split('.')[1]||'').length;
+    var dur = 1400, start = null;
+    function fmt(v){ return v.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals}); }
+    function step(ts){
+      if(start===null) start=ts;
+      var p = Math.min((ts-start)/dur,1);
+      var eased = 1 - Math.pow(1-p,3);
+      el.textContent = fmt(target*eased) + suffix;
+      if(p<1) requestAnimationFrame(step); else el.textContent = fmt(target) + suffix;
+    }
+    requestAnimationFrame(step);
+  }
+  var counters = document.querySelectorAll('[data-count]');
+  if('IntersectionObserver' in window && !reduce){
+    var io2 = new IntersectionObserver(function(entries,obs){
+      entries.forEach(function(en){ if(en.isIntersecting){ countUp(en.target); obs.unobserve(en.target); } });
+    }, {threshold:0.6});
+    counters.forEach(function(el){ io2.observe(el); });
+  } else {
+    counters.forEach(function(el){ el.textContent = (parseFloat(el.getAttribute('data-count'))||0).toLocaleString('en-US') + (el.getAttribute('data-suffix')||''); });
+  }
+
+  /* ---------- Hero spark bars (decorative) ---------- */
+  var spark = document.getElementById('spark');
+  if(spark){
+    var heights = [38,52,44,60,48,70,55,82,64,90,72,58,66,78,60,86,68,94,74,62,80,70,88,76];
+    heights.forEach(function(h){ var b=document.createElement('i'); b.style.height = h + '%'; spark.appendChild(b); });
+  }
+
+  /* ---------- Tabs (roving tabindex + keyboard) ---------- */
+  var tablist = document.querySelector('[role="tablist"]');
+  if(tablist){
+    var tabs = Array.prototype.slice.call(tablist.querySelectorAll('[role="tab"]'));
+    function selectTab(tab, setFocus){
+      tabs.forEach(function(t){
+        var selected = (t === tab);
+        t.setAttribute('aria-selected', selected ? 'true':'false');
+        t.tabIndex = selected ? 0 : -1;
+        var panel = document.getElementById(t.getAttribute('aria-controls'));
+        if(panel) panel.hidden = !selected;
+      });
+      if(setFocus) tab.focus();
+    }
+    tabs.forEach(function(tab, i){
+      tab.addEventListener('click', function(){ selectTab(tab, false); });
+      tab.addEventListener('keydown', function(e){
+        var idx = i;
+        if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); selectTab(tabs[(idx+1)%tabs.length], true); }
+        else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); selectTab(tabs[(idx-1+tabs.length)%tabs.length], true); }
+        else if(e.key==='Home'){ e.preventDefault(); selectTab(tabs[0], true); }
+        else if(e.key==='End'){ e.preventDefault(); selectTab(tabs[tabs.length-1], true); }
+      });
+    });
+  }
+
+  /* ---------- Accordion (aria-expanded + grid rows) ---------- */
+  document.querySelectorAll('.acc-trigger').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      var panel = document.getElementById(btn.getAttribute('aria-controls'));
+      if(panel) panel.classList.toggle('open', !expanded);
+    });
+  });
+
+  /* ---------- Dummy form ---------- */
+  var form = document.querySelector('.form');
+  if(form){
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var note = document.getElementById('formNote');
+      if(note) note.textContent = 'デモのため送信は行われません。ありがとうございます（入力内容は保存されません）。';
+    });
+  }
+
+  /* ---------- Magnetic CTA (rAF + lerp) ---------- */
+  if(!reduce && window.matchMedia('(pointer:fine)').matches){
+    document.querySelectorAll('.btn-primary').forEach(function(btn){
+      var tx=0,ty=0,cx=0,cy=0,raf=null;
+      function loop(){
+        cx += (tx-cx)*0.18; cy += (ty-cy)*0.18;
+        btn.style.transform = 'translate('+cx.toFixed(2)+'px,'+cy.toFixed(2)+'px)';
+        if(Math.abs(tx-cx)>0.1||Math.abs(ty-cy)>0.1){ raf=requestAnimationFrame(loop); } else { raf=null; }
+      }
+      btn.addEventListener('mousemove', function(e){
+        var r = btn.getBoundingClientRect();
+        tx = (e.clientX - (r.left+r.width/2))*0.18;
+        ty = (e.clientY - (r.top+r.height/2))*0.28;
+        if(!raf) raf=requestAnimationFrame(loop);
+      });
+      btn.addEventListener('mouseleave', function(){ tx=0; ty=0; if(!raf) raf=requestAnimationFrame(loop); });
+    });
+  }
+})();
+</script>
+</body>
+</html>
